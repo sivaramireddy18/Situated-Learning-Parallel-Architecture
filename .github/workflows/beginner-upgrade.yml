@@ -1,0 +1,36 @@
+name: Make labs beginner friendly
+
+on:
+  push:
+    paths:
+      - '.github/workflows/beginner-upgrade.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add beginner guides
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          style='''<style>.beginner-guide .demo{border:2px solid #43b7df}.beginner-badge{display:inline-block;background:#e0f2fe;color:#075985;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:900;margin-bottom:8px}.beginner-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.beginner-steps>div,.term-grid>div{background:#f8fafc;border:1px solid #dbe3ef;border-radius:10px;padding:12px;line-height:1.5}.stage-explain{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}.stage-explain span{background:#122c40;color:#fff;border-radius:9px;padding:10px;text-align:center}.stage-explain b{display:block;font-size:18px}.stage-explain small{display:block;color:#c8dce7;margin-top:4px}.learning-tip{background:#ecfeff;border-left:4px solid #43b7df;padding:12px;border-radius:8px;line-height:1.5}.term-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.term-grid small{display:block;margin-top:5px;color:#475569;line-height:1.4}@media(max-width:700px){.beginner-steps,.term-grid{grid-template-columns:1fr}.stage-explain{grid-template-columns:repeat(5,110px);overflow:auto}}</style>'''
+          panels={
+          'pipeline.html':'''<section class="section beginner-guide"><div class="demo"><div class="beginner-badge">BEGINNER MODE · START HERE</div><h2>How to use this simulation</h2><p><b>Goal:</b> learn how a CPU processes instructions without prior pipeline knowledge.</p><div class="beginner-steps"><div><b>1. Choose an example</b><br>Select <b>Load-use RAW</b>.</div><div><b>2. Press Clock +1</b><br>Each click is one CPU clock cycle. Watch the instruction move.</div><div><b>3. Read the explanation</b><br>The message below the stages explains what happened and why.</div></div><div class="stage-explain"><span><b>IF</b><small>Get instruction</small></span><span><b>ID</b><small>Understand it</small></span><span><b>EX</b><small>Do the operation</small></span><span><b>MEM</b><small>Access memory</small></span><span><b>WB</b><small>Save result</small></span></div><div class="learning-tip"><b>💡 Beginner tip:</b> First understand <b>IF → ID → EX → MEM → WB</b>. You can explore CPI and hardware details later.</div></div></section>''',
+          'dual-issue.html':'''<section class="section beginner-guide"><div class="demo"><div class="beginner-badge">BEGINNER MODE · START HERE</div><h2>How to use this simulation</h2><p><b>Goal:</b> understand how a processor can work on two instructions at the same time while keeping results correct.</p><div class="beginner-steps"><div><b>1. Start with Independent dual issue</b><br>See two instructions issue together because they do not depend on each other.</div><div><b>2. Try RAW chain</b><br>Watch a later instruction wait for an earlier result.</div><div><b>3. Try Case Study 2</b><br>Observe renaming, reservation stations and the reorder buffer.</div></div><div class="term-grid"><div><b>Issue width 2</b><small>Up to two instructions can start in one cycle.</small></div><div><b>RAW</b><small>A real dependency: an instruction needs a previous result.</small></div><div><b>Renaming</b><small>Uses a new physical register to avoid false conflicts.</small></div><div><b>ROB</b><small>Keeps results committed in program order.</small></div></div><div class="learning-tip"><b>💡 Beginner tip:</b> Follow <b>Instructions → Dependencies → Renaming → Reservation Stations → ROB</b>.</div></div></section>''',
+          'branch.html':'''<section class="section beginner-guide"><div class="demo"><div class="beginner-badge">BEGINNER MODE · START HERE</div><h2>What is branch prediction?</h2><p>A branch is a program decision: <b>which path should the CPU take?</b> The processor predicts the answer so it can keep working.</p><div class="beginner-steps"><div><b>1. Start at 90%</b><br>10% of branches are mispredicted.</div><div><b>2. Press 96%</b><br>Compare the resulting CPI.</div><div><b>3. Understand the trade-off</b><br>Better prediction can improve performance but adds hardware cost.</div></div><div class="stage-explain"><span><b>Predict</b><small>Guess path</small></span><span><b>Execute</b><small>Continue work</small></span><span><b>Correct?</b><small>Keep going</small></span><span><b>Wrong?</b><small>Flush wrong path</small></span><span><b>Result</b><small>Lower CPI</small></span></div><div class="learning-tip"><b>💡 Beginner tip:</b> Remember: <b>fewer wrong predictions → fewer wasted cycles → lower CPI</b>.</div></div></section>'''}
+          for name,panel in panels.items():
+              p=Path(name); text=p.read_text()
+              if 'BEGINNER MODE · START HERE' not in text:
+                  p.write_text(text.replace('<main class="wrap">','<main class="wrap">'+style+panel,1))
+          PY
+      - name: Commit updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pipeline.html dual-issue.html branch.html
+          git diff --cached --quiet || git commit -m "Make architecture simulations beginner friendly"
+          git push
